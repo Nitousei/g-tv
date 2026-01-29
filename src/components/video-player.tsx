@@ -34,7 +34,7 @@ export function VideoPlayer({ url, poster, title, onInit }: VideoPlayerProps) {
             el: containerRef.current,
             url: url,
             poster: poster,
-            autoplay: true,
+            autoplay: false,  // 手动控制播放
             width: '100%',
             height: '100%',
             playsinline: true,
@@ -59,6 +59,27 @@ export function VideoPlayer({ url, poster, title, onInit }: VideoPlayerProps) {
             // 倍速播放
             playbackRate: [0.5, 0.75, 1, 1.25, 1.5, 2],
         })
+
+        // 尝试带声音自动播放，如果被阻止则静音后重试
+        const tryAutoplay = async () => {
+            if (!playerRef.current) return
+            try {
+                await playerRef.current.play()
+                console.log('[Player] Autoplay with sound succeeded')
+            } catch (e) {
+                console.log('[Player] Autoplay with sound blocked, trying muted...')
+                if (playerRef.current) {
+                    playerRef.current.muted = true
+                    try {
+                        await playerRef.current.play()
+                        console.log('[Player] Muted autoplay succeeded')
+                    } catch (e2) {
+                        console.log('[Player] All autoplay attempts failed')
+                    }
+                }
+            }
+        }
+        tryAutoplay()
 
         if (onInit && playerRef.current) {
             onInit(playerRef.current)
