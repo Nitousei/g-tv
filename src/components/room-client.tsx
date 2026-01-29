@@ -82,11 +82,18 @@ export function RoomClient({ roomCode, currentUser }: RoomClientProps) {
 
     // 初始化 Socket
     useEffect(() => {
-        const newSocket = io('http://localhost:3001');
+        console.log('[CLIENT] Initializing socket connection to http://localhost:3001');
+        console.log('[CLIENT] Current user:', currentUser, 'Room:', roomCode, 'Create:', isCreate);
+
+        const newSocket = io('http://localhost:3001', {
+            timeout: 5000,  // 5秒超时
+            reconnectionAttempts: 3
+        });
         setSocket(newSocket);
 
         newSocket.on('connect', () => {
-            console.log('Connected to socket server');
+            console.log('[CLIENT] Connected to socket server, socket id:', newSocket.id);
+            console.log('[CLIENT] Emitting join-room event...');
             newSocket.emit('join-room', {
                 roomCode,
                 user: { id: currentUser.id, name: currentUser.username },
@@ -94,7 +101,19 @@ export function RoomClient({ roomCode, currentUser }: RoomClientProps) {
             });
         });
 
+        newSocket.on('connect_error', (err) => {
+            console.error('[CLIENT] Socket connection error:', err.message);
+            toast.error("无法连接到服务器", {
+                description: "请确保 Socket 服务已启动 (npm run socket)"
+            });
+        });
+
+        newSocket.on('disconnect', (reason) => {
+            console.log('[CLIENT] Socket disconnected:', reason);
+        });
+
         newSocket.on('error', (msg: string) => {
+            console.error('[CLIENT] Server error:', msg);
             toast.error("加入失败", {
                 description: msg
             });
@@ -105,7 +124,8 @@ export function RoomClient({ roomCode, currentUser }: RoomClientProps) {
         });
 
         newSocket.on('room-update', (data: { members: User[], roomState: RoomState }) => {
-            console.log('[CLIENT] room-update received', data);
+            console.log('[CLIENT] room-update received:', JSON.stringify(data, null, 2));
+            console.log('[CLIENT] Setting members:', data.members.length, 'Host ID:', data.roomState?.hostId);
             setMembers(data.members);
             setRoomState(data.roomState);
         });
