@@ -49,6 +49,7 @@
         "director": "导演"
     },
     "Room": {
+        "or": "或者",
         "title": "放映厅",
         "desc": "与好友实时同步观看",
         "enterCode": "输入房间号",
