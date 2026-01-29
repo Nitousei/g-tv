@@ -41,11 +41,13 @@ io.on('connection', (socket) => {
 
     // 加入房间
     socket.on('join-room', async ({ roomCode, user, create }: { roomCode: string, user: { id: number, name: string }, create?: boolean }) => {
+        console.log(`[JOIN] Room: ${roomCode}, User: ${user.id} (${user.name}), Create: ${create}, Socket: ${socket.id}`);
 
         // 检查房间是否存在
         const roomExists = await redis.exists(getKey.room(roomCode));
 
         if (!create && !roomExists) {
+            console.log(`[JOIN] Room ${roomCode} not found`);
             socket.emit('error', '房间不存在');
             return;
         }
@@ -54,18 +56,32 @@ io.on('connection', (socket) => {
 
         // 获取房间当前成员
         const membersJson = await redis.lrange(getKey.members(roomCode), 0, -1);
-        let members: User[] = membersJson.map(m => JSON.parse(m));
+        console.log(`[JOIN] Existing members count: ${membersJson.length}`);
+
+        // Robust parsing
+        let members: User[] = [];
+        try {
+            members = membersJson.map(m => JSON.parse(m));
+        } catch (e) {
+            console.error(`[JOIN] Error parsing members:`, e);
+            // If corruption, maybe clear correctly? 
+            // For now, assume empty if parse fails to avoid crash
+        }
 
         // 检查用户是否已在房间（避免重复添加）
-        const existingMemberIndex = members.findIndex(m => m.id === user.id);
+        // Ensure stricter type check if needed, but usually IDs are numbers
+        const existingMemberIndex = members.findIndex(m => Number(m.id) === Number(user.id));
+
         if (existingMemberIndex === -1) {
             const newUser = { id: user.id, username: user.name, socketId: socket.id };
             members.push(newUser);
             await redis.rpush(getKey.members(roomCode), JSON.stringify(newUser));
+            console.log(`[JOIN] Added new user ${user.id}`);
         } else {
             // 更新 socketId
             members[existingMemberIndex].socketId = socket.id;
             await redis.lset(getKey.members(roomCode), existingMemberIndex, JSON.stringify(members[existingMemberIndex]));
+            console.log(`[JOIN] Updated socket for user ${user.id}`);
         }
 
         // 确定 Host
@@ -86,15 +102,19 @@ io.on('connection', (socket) => {
                 lastUpdate: Date.now()
             };
             await redis.set(getKey.room(roomCode), JSON.stringify(roomState), 'EX', 24 * 60 * 60); // 24小时过期
+            console.log(`[JOIN] Created new room state with host ${hostId}`);
         } else {
             hostId = roomState.hostId;
             // 如果 Host 不在成员列表中（异常情况），重置 Host
             if (!members.find(m => m.id === hostId)) {
+                console.log(`[JOIN] Host ${hostId} not in members. Resetting to ${members[0].id}`);
                 hostId = members[0].id;
                 roomState.hostId = hostId;
                 await redis.set(getKey.room(roomCode), JSON.stringify(roomState));
             }
         }
+
+        console.log(`[JOIN] Emitting room-update. Members: ${members.length}, Host: ${hostId}`);
 
         // 广播房间信息
         io.to(roomCode).emit('room-update', {

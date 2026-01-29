@@ -49,6 +49,7 @@
         "director": "Director"
     },
     "Room": {
+        "or": "OR",
         "title": "Watch Together",
         "desc": "Watch with friends in real-time",
         "enterCode": "Room Code",

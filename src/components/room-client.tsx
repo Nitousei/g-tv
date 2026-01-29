@@ -105,6 +105,7 @@ export function RoomClient({ roomCode, currentUser }: RoomClientProps) {
         });
 
         newSocket.on('room-update', (data: { members: User[], roomState: RoomState }) => {
+            console.log('[CLIENT] room-update received', data);
             setMembers(data.members);
             setRoomState(data.roomState);
         });
