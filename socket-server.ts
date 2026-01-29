@@ -143,9 +143,9 @@ io.on('connection', (socket) => {
             const newState = { ...current, ...state, lastUpdate: Date.now() };
             await redis.set(getKey.room(roomCode), JSON.stringify(newState));
 
-            // 广播给房间内所有人（除了发送者? 或者所有人）
-            // 广播给房间内所有人（包括发送者，这样Host也能收到状态更新从而切换界面）
-            io.to(roomCode).emit('sync-video', newState);
+            // 广播给房间内所有人（除了发送者）
+            // 客户端采用了乐观更新，所以不需要发回给发送者，否则会导致 playback 状态跳变
+            socket.to(roomCode).emit('sync-video', newState);
         }
     });
 

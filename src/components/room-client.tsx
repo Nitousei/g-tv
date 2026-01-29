@@ -123,7 +123,12 @@ export function RoomClient({ roomCode, currentUser }: RoomClientProps) {
         });
 
         newSocket.on('sync-video', (state: RoomState) => {
-            setRoomState(prev => (prev ? { ...prev, ...state } : state));
+            setRoomState(prev => {
+                if (state.currentVideo && prev?.currentVideo?.vod_id !== state.currentVideo.vod_id) {
+                    toast.info(`房主切换了视频: ${state.currentVideo.vod_name}`);
+                }
+                return prev ? { ...prev, ...state } : state;
+            });
         });
 
         newSocket.on('system-message', (msg: string) => {
@@ -282,6 +287,7 @@ export function RoomClient({ roomCode, currentUser }: RoomClientProps) {
                                 {/* Player Container */}
                                 <div className="group relative overflow-hidden border border-border bg-black aspect-video ring-4 ring-card-foreground/5">
                                     <VideoPlayer
+                                        key={roomState.currentVideo?.vod_id}
                                         url={getPlayUrl(roomState.currentVideo, roomState.currentEpisodeIndex)}
                                         poster={roomState.currentVideo.vod_pic}
                                         onInit={(p) => {
