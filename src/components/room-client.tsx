@@ -200,6 +200,21 @@ export function RoomClient({ roomCode, currentUser }: RoomClientProps) {
     // 选择视频
     const handleSelectVideo = (video: any) => {
         if (!socket) return;
+
+        // 乐观更新：本地立即更新状态，不必等待服务器广播
+        // 这样可以解决服务器广播可能有延迟，或者广播机制有问题导致房主收不到更新的问题
+        setRoomState(prev => {
+            if (!prev) return null;
+            return {
+                ...prev,
+                currentVideo: video,
+                currentEpisodeIndex: 0,
+                currentTime: 0,
+                isPlaying: true,
+                lastUpdate: Date.now()
+            }
+        });
+
         socket.emit('sync-video', {
             roomCode,
             state: {
@@ -212,124 +227,203 @@ export function RoomClient({ roomCode, currentUser }: RoomClientProps) {
     };
 
     return (
-        <div className="container mx-auto p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-                    <Users className="h-5 w-5 sm:h-6 sm:w-6" /> 房间: {roomCode}
-                </h1>
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center space-x-2">
-                        <Label htmlFor="sync-mode">跟随进度</Label>
-                        <Switch
-                            id="sync-mode"
-                            checked={followHost}
-                            onCheckedChange={setFollowHost}
-                            disabled={isHost}
-                        />
+        <div className="min-h-screen bg-background bg-grid font-sans text-foreground pb-20">
+            <div className="container mx-auto p-4 lg:p-6 space-y-6">
+                {/* Top Status Bar */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card border border-border p-4">
+                    <div className="flex items-center gap-4">
+                        <div className="bg-muted px-3 py-1.5 flex items-center gap-2 border border-border">
+                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Room Code</span>
+                            <span className="text-lg font-mono font-bold text-primary tracking-widest">{roomCode}</span>
+                        </div>
+                        <Badge variant="outline" className={`h-8 px-3 ${socket?.connected ? 'bg-green-500/10 text-green-600 border-green-200' : 'bg-red-500/10 text-red-600 border-red-200'}`}>
+                            {socket?.connected ? 'LIVE' : 'OFFLINE'}
+                        </Badge>
                     </div>
-                    <Button variant="destructive" size="sm" onClick={() => router.push('/zh/room')}>
-                        <LogOut className="w-4 h-4 mr-2" /> 退出
-                    </Button>
-                </div>
-            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
-                <div className="lg:col-span-8 xl:col-span-9 space-y-4">
-                    {roomState?.currentVideo ? (
-                        <div className="space-y-4">
-                            <div className="overflow-visible rounded-lg border bg-black aspect-video">
-                                <VideoPlayer
-                                    url={getPlayUrl(roomState.currentVideo, roomState.currentEpisodeIndex)}
-                                    poster={roomState.currentVideo.vod_pic}
-                                    onInit={(p) => {
-                                        setPlayer(p);
-                                        playerRef.current = p;
-                                    }}
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary/10 border border-primary/20">
+                            <Users className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                            <h2 className="text-sm font-bold text-card-foreground">
+                                {isHost ? '我是房主' : '跟随观看'}
+                            </h2>
+                            <p className="text-xs text-muted-foreground">
+                                {isHost ? '控制播放进度' : '同步房主画面'}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 ml-auto sm:ml-0">
+                        {!isHost && (
+                            <div className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 border border-border">
+                                <Switch
+                                    id="follow-mode"
+                                    checked={followHost}
+                                    onCheckedChange={setFollowHost}
                                 />
+                                <Label htmlFor="follow-mode" className="text-xs font-medium cursor-pointer text-muted-foreground">
+                                    {followHost ? '已同步' : '暂停同步'}
+                                </Label>
                             </div>
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <h2 className="text-xl font-bold">{roomState.currentVideo.vod_name}</h2>
-                                    <p className="text-sm text-muted-foreground">
-                                        正在播放: {getEpisodeList(roomState.currentVideo)[roomState.currentEpisodeIndex]?.name || '第 1 集'}
-                                    </p>
-                                </div>
-                                {isHost && (
-                                    <div className="max-w-[200px]">
-                                        <ClientVideoSelector onSelect={handleSelectVideo} />
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Episode List */}
-                            <Card>
-                                <CardHeader className="py-3">
-                                    <CardTitle className="text-sm font-medium">选集</CardTitle>
-                                </CardHeader>
-                                <CardContent className="py-3 max-h-[300px] overflow-y-auto">
-                                    <div className="flex flex-wrap gap-2">
-                                        {getEpisodeList(roomState.currentVideo).map((ep: Episode) => (
-                                            <Button
-                                                key={ep.index}
-                                                variant={roomState.currentEpisodeIndex === ep.index ? "default" : "outline"}
-                                                size="sm"
-                                                className="min-w-[60px]"
-                                                onClick={() => {
-                                                    if (!isHost || !socket) return;
-                                                    socket.emit('sync-video', {
-                                                        roomCode,
-                                                        state: {
-                                                            currentEpisodeIndex: ep.index,
-                                                            currentTime: 0,
-                                                            isPlaying: true
-                                                        }
-                                                    });
-                                                }}
-                                                disabled={!isHost}
-                                            >
-                                                {ep.name}
-                                            </Button>
-                                        ))}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            <div className="aspect-video bg-muted flex flex-col items-center justify-center rounded-lg border-2 border-dashed">
-                                <Film className="h-12 w-12 text-muted-foreground mb-4 opacity-20" />
-                                <p className="text-muted-foreground">等待房主选择影片...</p>
-                            </div>
-                            {isHost && (
-                                <ClientVideoSelector onSelect={handleSelectVideo} />
-                            )}
-                        </div>
-                    )}
+                        )}
+                        <Button variant="ghost" size="icon" onClick={() => router.push('/zh/room')} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+                            <LogOut className="h-5 w-5" />
+                        </Button>
+                    </div>
                 </div>
 
-                <div className="lg:col-span-4 xl:col-span-3 space-y-4 sm:space-y-6">
-                    <Card className="h-fit">
-                        <CardHeader className="py-3 sm:py-4">
-                            <CardTitle className="text-base sm:text-lg">在线成员 ({members.length})</CardTitle>
-                        </CardHeader>
-                        <CardContent className="px-3 sm:px-6 pb-4 sm:pb-6">
-                            <ul className="space-y-2">
-                                {members.map(user => (
-                                    <li key={user.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-md text-sm">
-                                        <div className="flex items-center gap-2 overflow-hidden">
-                                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
-                                                {user.username.slice(0, 2).toUpperCase()}
-                                            </div>
-                                            <span className="truncate font-medium">{user.username}</span>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    {/* Main Area: Player & Episodes */}
+                    <div className="lg:col-span-8 xl:col-span-9 space-y-6">
+                        {roomState?.currentVideo ? (
+                            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                                {/* Player Container */}
+                                <div className="group relative overflow-hidden border border-border bg-black aspect-video ring-4 ring-card-foreground/5">
+                                    <VideoPlayer
+                                        url={getPlayUrl(roomState.currentVideo, roomState.currentEpisodeIndex)}
+                                        poster={roomState.currentVideo.vod_pic}
+                                        onInit={(p) => {
+                                            setPlayer(p);
+                                            playerRef.current = p;
+                                        }}
+                                    />
+                                </div>
+
+                                {/* Video Info & Selector */}
+                                <div className="flex flex-col md:flex-row justify-between items-start gap-6 bg-card p-5 border border-border">
+                                    <div>
+                                        <h1 className="text-2xl font-bold tracking-tight text-card-foreground mb-2">
+                                            {roomState.currentVideo.vod_name}
+                                        </h1>
+                                        <div className="flex items-center gap-3">
+                                            <Badge variant="secondary" className="font-mono">
+                                                EP {roomState.currentEpisodeIndex + 1}
+                                            </Badge>
+                                            <span className="text-sm text-muted-foreground">
+                                                {roomState.currentVideo.type_name}
+                                            </span>
                                         </div>
-                                        {roomState?.hostId === user.id && (
-                                            <Badge variant="secondary" className="scale-90 flex-shrink-0">房主</Badge>
-                                        )}
-                                    </li>
-                                ))}
-                            </ul>
-                        </CardContent>
-                    </Card>
+                                    </div>
+
+                                    {isHost && (
+                                        <div className="w-full md:w-[200px]">
+                                            <ClientVideoSelector onSelect={handleSelectVideo} />
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Episode List */}
+                                <Card className="border border-border bg-card">
+                                    <CardHeader className="pb-3 border-b border-border bg-muted/30">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <Film className="h-4 w-4 text-primary" />
+                                                <CardTitle className="text-base font-bold text-card-foreground">选集播放</CardTitle>
+                                            </div>
+                                            <span className="text-xs font-mono text-muted-foreground">
+                                                Total {getEpisodeList(roomState.currentVideo)?.length || 0}
+                                            </span>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="p-4 sm:p-6 max-h-[300px] overflow-y-auto scrollbar-hide">
+                                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-8 gap-2">
+                                            {getEpisodeList(roomState.currentVideo).map((ep: Episode, index: number) => (
+                                                <Button
+                                                    key={index}
+                                                    variant={roomState.currentEpisodeIndex === index ? "default" : "outline"}
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        if (!isHost || !socket) return;
+                                                        socket.emit('sync-video', {
+                                                            roomCode,
+                                                            state: {
+                                                                currentEpisodeIndex: ep.index,
+                                                                currentTime: 0,
+                                                                isPlaying: true
+                                                            }
+                                                        });
+                                                    }}
+                                                    className={`w-full font-mono text-xs transition-all ${roomState.currentEpisodeIndex === index
+                                                        ? 'bg-primary text-primary-foreground shadow-sm'
+                                                        : 'border-border text-muted-foreground hover:border-primary hover:text-primary'
+                                                        }`}
+                                                    disabled={!isHost}
+                                                >
+                                                    {ep.name}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        ) : (
+                            <div className="space-y-6 animate-in zoom-in-95 duration-500">
+                                <div className="aspect-video bg-card border border-border flex flex-col items-center justify-center relative p-8 text-center pattern-grid-lg">
+                                    <div className="w-20 h-20 bg-muted/50 flex items-center justify-center mb-6 border border-border">
+                                        <Film className="h-10 w-10 text-muted-foreground/50" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-card-foreground mb-2">等待播放内容</h3>
+                                    <p className="text-muted-foreground max-w-sm mx-auto mb-8">
+                                        {isHost ? '请使用上方搜索栏查找影片，或直接粘贴视频链接开始' : '房主尚未选择播放内容，请稍候...'}
+                                    </p>
+                                    {isHost && (
+                                        <div className="flex justify-center">
+                                            <div className="w-full max-w-sm">
+                                                <ClientVideoSelector onSelect={handleSelectVideo} />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Right Sidebar: Members */}
+                    <div className="lg:col-span-4 xl:col-span-3">
+                        <Card className="h-full border border-border bg-card sticky top-8 flex flex-col">
+                            <CardHeader className="py-4 border-b border-border bg-muted/30">
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-card-foreground">
+                                        <Users className="h-4 w-4 text-primary" />
+                                        在线成员
+                                    </CardTitle>
+                                    <Badge variant="secondary" className="bg-background border-border text-muted-foreground font-mono text-xs">
+                                        {members.length}
+                                    </Badge>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-0 flex-1 overflow-y-auto max-h-[calc(100vh-300px)]">
+                                <div className="divide-y divide-border">
+                                    {members.map((member) => (
+                                        <div key={member.id} className="p-4 flex items-center gap-3 hover:bg-muted/30 transition-colors">
+                                            <div className={`w-8 h-8 flex items-center justify-center text-xs font-bold border ${roomState?.hostId === member.id ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted text-muted-foreground border-border'}`}>
+                                                {member.username.substring(0, 1).toUpperCase()}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-sm font-medium truncate text-card-foreground">
+                                                        {member.username} {member.id === currentUser.id && '(我)'}
+                                                    </p>
+                                                    {roomState?.hostId === member.id && (
+                                                        <Badge variant="outline" className="text-[10px] px-1 h-4 border-primary/30 text-primary">HOST</Badge>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-1.5 mt-1">
+                                                    <div className="w-1.5 h-1.5 bg-green-500 animate-pulse" />
+                                                    <p className="text-xs text-muted-foreground">Watching</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                            <div className="p-3 border-t border-border bg-muted/30 text-center">
+                                <p className="text-[10px] text-muted-foreground font-mono">SYNC STATUS: STABLE</p>
+                            </div>
+                        </Card>
+                    </div>
                 </div>
             </div>
         </div>

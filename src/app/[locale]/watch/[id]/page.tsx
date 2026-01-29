@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { VideoPlayer } from '@/components/video-player'
-import { Loader2, ArrowLeft, Play } from 'lucide-react'
+import { Loader2, ArrowLeft, Play, Square } from 'lucide-react'
 import Link from 'next/link'
 
 interface VodDetail {
@@ -113,7 +113,7 @@ export default function WatchPage({
     if (isLoading) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <Square className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
         )
     }

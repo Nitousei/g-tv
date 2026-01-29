@@ -12,7 +12,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
-import { Loader2, Search, Film } from 'lucide-react'
+import { Loader2, Search, Film, Play, Square } from 'lucide-react'
+import { ImageWithLoading } from '@/components/ui/image-with-loading'
 import Link from 'next/link'
 import Header from '@/components/header'
 
@@ -219,122 +220,155 @@ export default function SearchPage() {
     }, [handleObserver])
 
     return (
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-background bg-grid flex flex-col font-sans text-foreground">
             {/* Header */}
             <Header />
 
             {/* Content */}
-            <div className="container mx-auto px-4 py-6">
+            <div className="flex-1 container mx-auto px-4 py-8 space-y-8">
                 {/* 搜索框 + 资源站选择 */}
-                <div className="max-w-3xl mx-auto flex gap-2 mb-6">
-                    {/* 资源站下拉框 */}
-                    <Select
-                        value={activeSite?.id?.toString() || ''}
-                        onValueChange={(value: string) => {
-                            const site = sites.find(s => s.id.toString() === value)
-                            if (site) setActiveSite(site)
-                        }}
-                    >
-                        <SelectTrigger className="w-[140px] h-12">
-                            <SelectValue placeholder="选择资源站" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {sites.map((site) => (
-                                <SelectItem key={site.id} value={site.id.toString()}>
-                                    {site.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                <div className="max-w-4xl mx-auto bg-card p-3 border border-border sticky top-20 z-40">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        {/* 资源站下拉框 */}
+                        <Select
+                            value={activeSite?.id?.toString() || ''}
+                            onValueChange={(value: string) => {
+                                const site = sites.find(s => s.id.toString() === value)
+                                if (site) setActiveSite(site)
+                            }}
+                        >
+                            <SelectTrigger className="w-full sm:w-[180px] h-11 bg-background border-border focus:ring-2 focus:ring-primary/20 font-medium text-card-foreground">
+                                <SelectValue placeholder="选择资源站" />
+                            </SelectTrigger>
+                            <SelectContent className="border-border shadow-md">
+                                {sites.map((site) => (
+                                    <SelectItem key={site.id} value={site.id.toString()} className="cursor-pointer font-medium focus:text-primary focus:bg-primary/10">
+                                        {site.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
 
-                    {/* 搜索输入框 */}
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <Input
-                            type="search"
-                            placeholder={t('placeholder')}
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            className="pl-10 h-12 text-lg"
-                        />
+                        {/* 搜索输入框 */}
+                        <div className="relative flex-1 group">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                            <Input
+                                type="search"
+                                placeholder={t('placeholder')}
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                className="pl-11 h-11 text-base bg-background border-border focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all"
+                            />
+                        </div>
+                        <Button
+                            size="lg"
+                            onClick={handleSearch}
+                            disabled={isSearching || !query.trim()}
+                            className="h-11 px-6 font-semibold shadow-none transition-all bg-primary hover:bg-primary/90 text-primary-foreground"
+                        >
+                            {isSearching ? (
+                                <Square className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <>
+                                    <Search className="h-4 w-4 mr-2" />
+                                    {t('searchBtn') || '搜索'}
+                                </>
+                            )}
+                        </Button>
                     </div>
-                    <Button
-                        size="lg"
-                        onClick={handleSearch}
-                        disabled={isSearching || !query.trim()}
-                        className="h-12 px-6"
-                    >
-                        {isSearching ? (
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                        ) : (
-                            t('searchBtn') || '搜索'
-                        )}
-                    </Button>
                 </div>
 
-                {/* Results */}
-                {isSearching ? (
-                    <div className="flex justify-center py-20">
-                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                    </div>
-                ) : results.length === 0 ? (
-                    <div className="text-center py-20 text-muted-foreground">
-                        <Film className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                        <p>{query.trim() ? t('noResults') : t('startSearch')}</p>
-                    </div>
-                ) : (
-                    <>
-                        {/* Results Grid */}
-                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3">
-                            {results.map((vod) => (
-                                <Link
-                                    key={`${activeSite?.id}-${vod.vod_id}`}
-                                    href={`/${locale}/watch/${vod.vod_id}?site=${encodeURIComponent(activeSite?.apiUrl || '')}`}
-                                >
-                                    <Card className="overflow-hidden group cursor-pointer hover:ring-2 hover:ring-primary transition-all">
-                                        <div className="aspect-[2/3] bg-muted relative">
-                                            {vod.vod_pic ? (
-                                                <img
-                                                    src={vod.vod_pic}
-                                                    alt={vod.vod_name}
-                                                    className="w-full h-full object-cover"
-                                                    loading="lazy"
-                                                />
-                                            ) : (
-                                                <div className="absolute inset-0 flex items-center justify-center">
-                                                    <Film className="h-12 w-12 text-muted-foreground/30" />
-                                                </div>
-                                            )}
-                                            {/* Remarks Badge */}
-                                            {vod.vod_remarks && (
-                                                <div className="absolute top-2 right-2 bg-primary text-primary-foreground px-2 py-0.5 rounded text-xs font-medium">
-                                                    {vod.vod_remarks}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <CardContent className="p-2">
-                                            <h3 className="font-medium truncate text-sm">{vod.vod_name}</h3>
-                                            <p className="text-xs text-muted-foreground truncate">
-                                                {vod.vod_year || ''} {vod.type_name ? `· ${vod.type_name}` : ''}
-                                            </p>
-                                        </CardContent>
-                                    </Card>
-                                </Link>
-                            ))}
+                {/* Results Container */}
+                <div className="relative z-10 w-full min-h-[400px]">
+                    {isSearching ? (
+                        <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                            <div className="w-12 h-12 bg-card border border-border flex items-center justify-center">
+                                <Square className="h-6 w-6 animate-spin text-primary" />
+                            </div>
+                            <p className="text-muted-foreground font-medium text-sm">正在检索数据...</p>
                         </div>
+                    ) : results.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+                            <div className="w-20 h-20 bg-muted/50 flex items-center justify-center mb-6 border border-border">
+                                <Film className="h-10 w-10 opacity-30" />
+                            </div>
+                            <h3 className="text-lg font-bold text-foreground mb-1">
+                                {query.trim() ? '未找到相关内容' : '准备好开始了吗？'}
+                            </h3>
+                            <p className="max-w-[280px] text-center text-sm text-muted-foreground">
+                                {query.trim() ? t('noResults') : t('startSearch')}
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="space-y-10 animate-in fade-in duration-500">
+                            {/* Results Grid */}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 sm:gap-6">
+                                {results.map((vod) => (
+                                    <Link
+                                        key={`${activeSite?.id}-${vod.vod_id}`}
+                                        href={`/${locale}/watch/${vod.vod_id}?site=${encodeURIComponent(activeSite?.apiUrl || '')}`}
+                                        className="group block"
+                                    >
+                                        <Card className="overflow-hidden border border-border bg-card transition-all duration-300 group-hover:-translate-y-1 group-hover:border-primary/50">
+                                            <div className="aspect-[2/3] bg-muted relative overflow-hidden">
+                                                {vod.vod_pic ? (
+                                                    <ImageWithLoading
+                                                        src={vod.vod_pic}
+                                                        alt={vod.vod_name}
+                                                        className="transition-transform duration-700 group-hover:scale-105"
+                                                    />
+                                                ) : (
+                                                    <div className="absolute inset-0 flex items-center justify-center bg-muted">
+                                                        <Film className="h-8 w-8 text-muted-foreground/30" />
+                                                    </div>
+                                                )}
 
-                        {/* Loading More Indicator */}
-                        <div ref={observerTarget} className="py-8 flex justify-center">
-                            {isLoading && (
-                                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                            )}
-                            {!hasMore && results.length > 0 && (
-                                <p className="text-muted-foreground text-sm">{t('noMore')}</p>
-                            )}
+                                                {/* Hover Overlay */}
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                                                    <div className="bg-background/90 p-2 backdrop-blur-sm">
+                                                        <Play className="h-5 w-5 text-primary fill-current" />
+                                                    </div>
+                                                </div>
+
+                                                {/* Remarks Badge */}
+                                                {vod.vod_remarks && (
+                                                    <div className="absolute top-2 right-2 bg-black/60 text-white px-1.5 py-0.5 text-[10px] font-bold backdrop-blur-md">
+                                                        {vod.vod_remarks}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="p-3">
+                                                <h3 className="font-bold truncate text-sm text-card-foreground group-hover:text-primary transition-colors">
+                                                    {vod.vod_name}
+                                                </h3>
+                                                <div className="flex items-center gap-2 mt-1.5">
+                                                    <span className="bg-muted text-muted-foreground px-1.5 text-[10px] font-medium border border-border">
+                                                        {vod.vod_year || 'N/A'}
+                                                    </span>
+                                                    <span className="truncate text-xs text-muted-foreground">{vod.type_name || '未分类'}</span>
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    </Link>
+                                ))}
+                            </div>
+
+                            {/* Loading More Indicator */}
+                            <div ref={observerTarget} className="py-8 flex justify-center border-t border-border border-dashed">
+                                {isLoading && (
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
+                                        <Square className="h-4 w-4 animate-spin text-primary" />
+                                        <span>加载更多...</span>
+                                    </div>
+                                )}
+                                {!hasMore && results.length > 0 && (
+                                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-widest">End of Results</p>
+                                )}
+                            </div>
                         </div>
-                    </>
-                )}
+                    )}
+                </div>
             </div>
         </div>
     )

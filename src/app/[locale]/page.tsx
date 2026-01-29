@@ -1,9 +1,12 @@
-import { useTranslations } from 'next-intl'
-import Header from '../../components/header'
-import { LoginDialog } from '@/components/login-dialog'
+"use client"
+
+import { TypeAnimation } from 'react-type-animation';
+import { useTranslations } from 'next-intl';
+import Header from '@/components/header';
+import { LoginDialog } from '@/components/login-dialog';
 
 export default function Home() {
-  const t = useTranslations('HomePage')
+  const t = useTranslations('HomePage');
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -15,9 +18,23 @@ export default function Home() {
           <div className="inline-flex items-center rounded-lg bg-muted px-3 py-1 text-sm font-medium">
             {t('newRelease')}
           </div>
-          <h1 className="font-heading text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter text-foreground">
-            {t('heroTitle')}
-          </h1>
+          <TypeAnimation
+            sequence={[
+              '欢迎来到老乡TV',
+              2000,
+              '和好友一起看电影',
+              2000,
+              '海量高清影视资源',
+              2000,
+              '实时语音 边看边聊',
+              2000,
+            ]}
+            wrapper="h1"
+            speed={50}
+            style={{ fontSize: '2em', display: 'inline-block' }}
+            repeat={Infinity}
+            className="font-heading text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter text-foreground"
+          />
           <p className="max-w-[42rem] leading-normal text-muted-foreground sm:text-xl sm:leading-8">
             {t('heroSubtitle')}
           </p>

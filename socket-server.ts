@@ -144,8 +144,8 @@ io.on('connection', (socket) => {
             await redis.set(getKey.room(roomCode), JSON.stringify(newState));
 
             // 广播给房间内所有人（除了发送者? 或者所有人）
-            // 通常广播给所有人，除了发送者
-            socket.to(roomCode).emit('sync-video', newState);
+            // 广播给房间内所有人（包括发送者，这样Host也能收到状态更新从而切换界面）
+            io.to(roomCode).emit('sync-video', newState);
         }
     });
 

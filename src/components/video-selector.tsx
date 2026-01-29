@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, Search, Film } from 'lucide-react';
+import { Loader2, Search, Film, Square } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ImageWithLoading } from '@/components/ui/image-with-loading';
 
 interface CollectionSite {
     id: number
@@ -119,7 +120,7 @@ export function VideoSelector({ onSelect, trigger }: VideoSelectorProps) {
                         className="flex-1 h-10"
                     />
                     <Button onClick={handleSearch} disabled={loading || !query} className="h-10">
-                        {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Search className="h-4 w-4" />}
+                        {loading ? <Square className="animate-spin h-4 w-4" /> : <Search className="h-4 w-4" />}
                     </Button>
                 </div>
 
@@ -128,36 +129,40 @@ export function VideoSelector({ onSelect, trigger }: VideoSelectorProps) {
                         {results.map(vod => (
                             <Card
                                 key={vod.vod_id}
-                                className="overflow-hidden group cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                                className="overflow-hidden border border-border bg-card transition-all duration-300 group cursor-pointer hover:-translate-y-1 hover:border-primary/50"
                                 onClick={() => handleSelectVideo(vod.vod_id)}
                             >
-                                <div className="aspect-[2/3] bg-muted relative">
+                                <div className="aspect-[2/3] bg-muted relative overflow-hidden">
                                     {vod.vod_pic ? (
-                                        <img
+                                        <ImageWithLoading
                                             src={vod.vod_pic}
                                             alt={vod.vod_name}
-                                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                                            loading="lazy"
+                                            className="transition-transform duration-500 group-hover:scale-105"
                                         />
                                     ) : (
-                                        <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="absolute inset-0 flex items-center justify-center bg-muted">
                                             <Film className="h-8 w-8 text-muted-foreground/30" />
                                         </div>
                                     )}
                                     {/* Remarks Badge */}
                                     {vod.vod_remarks && (
-                                        <div className="absolute top-1 right-1 bg-primary text-primary-foreground px-1.5 py-0.5 rounded text-[10px] font-medium leading-none">
+                                        <div className="absolute top-1 right-1 bg-black/60 text-white px-1.5 py-0.5 text-[10px] font-bold backdrop-blur-md">
                                             {vod.vod_remarks}
                                         </div>
                                     )}
                                 </div>
-                                <CardContent className="p-1.5">
-                                    <h4 className="font-medium truncate text-[12px] leading-tight mb-0.5" title={vod.vod_name}>
+                                <CardContent className="p-2">
+                                    <h4 className="font-bold truncate text-xs text-card-foreground group-hover:text-primary transition-colors mb-0.5" title={vod.vod_name}>
                                         {vod.vod_name}
                                     </h4>
-                                    <p className="text-[10px] text-muted-foreground truncate opacity-80">
-                                        {vod.vod_year || ''} {vod.type_name ? `· ${vod.type_name}` : ''}
-                                    </p>
+                                    <div className="flex items-center gap-1.5 opacity-80">
+                                        <span className="bg-muted text-muted-foreground px-1 py-0.5 text-[9px] border border-border leading-none">
+                                            {vod.vod_year || 'N/A'}
+                                        </span>
+                                        <span className="text-[10px] text-muted-foreground truncate leading-none">
+                                            {vod.type_name ? `${vod.type_name}` : ''}
+                                        </span>
+                                    </div>
                                 </CardContent>
                             </Card>
                         ))}
@@ -170,7 +175,7 @@ export function VideoSelector({ onSelect, trigger }: VideoSelectorProps) {
                     )}
                     {loading && results.length === 0 && (
                         <div className="flex justify-center py-20">
-                            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                            <Square className="h-8 w-8 animate-spin text-muted-foreground" />
                         </div>
                     )}
                 </div>
