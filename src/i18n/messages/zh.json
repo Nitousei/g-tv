@@ -1,0 +1,65 @@
+{
+    "HomePage": {
+        "title": "老乡TV",
+        "login": "登录",
+        "newRelease": "最新发布",
+        "heroTitle": "无限电影、电视节目及更多内容。",
+        "heroSubtitle": "随时随地观看。随时取消。立即开始免费会员资格。",
+        "getStarted": "开始使用",
+        "learnMore": "了解更多",
+        "trending": "当下流行",
+        "viewAll": "查看全部"
+    },
+    "Login": {
+        "title": "登录",
+        "desc": "输入您的凭证以访问您的帐户。",
+        "username": "用户名",
+        "password": "密码",
+        "usernameRequired": "用户名为必填项。",
+        "passwordRequired": "密码为必填项。",
+        "loggingIn": "登录中...",
+        "success": "登录成功！",
+        "failed": "登录失败",
+        "error": "发生错误。请重试。"
+    },
+    "Theme": {
+        "light": "浅色",
+        "dark": "深色",
+        "system": "系统"
+    },
+    "Language": {
+        "en": "英文",
+        "zh": "中文"
+    },
+    "Search": {
+        "placeholder": "搜索电视剧、电影...",
+        "searchBtn": "搜索",
+        "error": "加载失败，请重试",
+        "noResults": "没有找到结果",
+        "startSearch": "输入关键词开始搜索",
+        "noMore": "没有更多了"
+    },
+    "Watch": {
+        "notFound": "未找到该影片",
+        "backToSearch": "返回搜索",
+        "selectEpisode": "请选择剧集",
+        "episodes": "剧集列表",
+        "noEpisodes": "暂无播放源",
+        "actors": "演员",
+        "director": "导演"
+    },
+    "Room": {
+        "title": "放映厅",
+        "desc": "与好友实时同步观看",
+        "enterCode": "输入房间号",
+        "join": "加入房间",
+        "create": "创建房间",
+        "roomCode": "房间号",
+        "members": "在线成员",
+        "host": "房主",
+        "exit": "退出房间",
+        "syncBtn": "跟随进度",
+        "playing": "正在播放",
+        "selectVideo": "选择影片"
+    }
+}

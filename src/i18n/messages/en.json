@@ -1,0 +1,65 @@
+{
+    "HomePage": {
+        "title": "老乡TV",
+        "login": "Login",
+        "newRelease": "New Release",
+        "heroTitle": "Unlimited movies, TV shows, and more.",
+        "heroSubtitle": "Watch anywhere. Cancel anytime. Start your free membership today.",
+        "getStarted": "Get Started",
+        "learnMore": "Learn More",
+        "trending": "Trending Now",
+        "viewAll": "View All"
+    },
+    "Login": {
+        "title": "Login",
+        "desc": "Enter your credentials to access your account.",
+        "username": "Username",
+        "password": "Password",
+        "usernameRequired": "Username is required.",
+        "passwordRequired": "Password is required.",
+        "loggingIn": "Logging in...",
+        "success": "Login successful!",
+        "failed": "Login failed",
+        "error": "An error occurred. Please try again."
+    },
+    "Theme": {
+        "light": "Light",
+        "dark": "Dark",
+        "system": "System"
+    },
+    "Language": {
+        "en": "English",
+        "zh": "Chinese"
+    },
+    "Search": {
+        "placeholder": "Search TV shows, movies...",
+        "searchBtn": "Search",
+        "error": "Failed to load, please try again",
+        "noResults": "No results found",
+        "startSearch": "Enter keywords to start searching",
+        "noMore": "No more results"
+    },
+    "Watch": {
+        "notFound": "Video not found",
+        "backToSearch": "Back to search",
+        "selectEpisode": "Please select an episode",
+        "episodes": "Episodes",
+        "noEpisodes": "No play sources available",
+        "actors": "Actors",
+        "director": "Director"
+    },
+    "Room": {
+        "title": "Watch Together",
+        "desc": "Watch with friends in real-time",
+        "enterCode": "Room Code",
+        "join": "Join",
+        "create": "Create Room",
+        "roomCode": "Room Code",
+        "members": "Members",
+        "host": "Host",
+        "exit": "Exit",
+        "syncBtn": "Sync",
+        "playing": "Now Playing",
+        "selectVideo": "Select Video"
+    }
+}
