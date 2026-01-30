@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "concurrently \"next dev\" \"npx ts-node socket-server.ts\"",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "concurrently \"next start\" \"node dist/socket-server.js\"",
     "lint": "eslint",
     "socket": "ts-node socket-server.ts"

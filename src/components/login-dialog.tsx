@@ -60,6 +60,7 @@ export function LoginDialog() {
         onSuccess: () => {
             setOpen(false)
             toast.success(t('success'))
+            router.refresh() // 刷新服务器状态，确保 cookie 被识别
             router.push(`/${locale}/search`)
         },
         onError: (error: any) => {
