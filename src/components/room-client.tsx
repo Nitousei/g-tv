@@ -13,6 +13,8 @@ import { Label } from '@/components/ui/label';
 import { Users, Play, LogOut, Film } from 'lucide-react';
 import { toast } from 'sonner';
 import DPlayer from 'dplayer';
+import { useVoiceChat } from '@/hooks/useVoiceChat';
+import { VoiceControls, VoiceMemberIndicator, MemberVolumeControl } from '@/components/voice-controls';
 
 interface User {
     id: number;
@@ -27,6 +29,13 @@ interface RoomState {
     isPlaying: boolean;
     currentTime: number;
     lastUpdate: number;
+}
+
+interface VoiceMemberInfo {
+    socketId: string;
+    userId: number;
+    username: string;
+    isMuted: boolean;
 }
 
 interface Episode {
@@ -47,12 +56,16 @@ export function RoomClient({ roomCode, currentUser }: RoomClientProps) {
     const [followHost, setFollowHost] = useState(true);
     const [player, setPlayer] = useState<DPlayer | null>(null);
     const playerRef = useRef<DPlayer | null>(null);
+    const [voiceMembers, setVoiceMembers] = useState<VoiceMemberInfo[]>([]);
     const router = useRouter();
     const searchParams = useSearchParams();
     const lastSyncTime = useRef(0);
 
     const isHost = roomState?.hostId === currentUser.id;
     const isCreate = searchParams.get('create') === 'true';
+
+    // 语音聊天 Hook
+    const voice = useVoiceChat({ socket, roomCode, currentUser });
 
     // 解析播放地址
     const getPlayUrl = (video: any, epIndex: number = 0) => {
@@ -82,14 +95,16 @@ export function RoomClient({ roomCode, currentUser }: RoomClientProps) {
 
     // 初始化 Socket
     useEffect(() => {
-        // 从环境变量获取 socket 服务地址
-        const socketHost = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
+        // Socket.IO 现在运行在同一端口，使用相对路径
+        // 生产环境下会自动使用当前页面的域名和端口
+        const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
 
-        console.log('[CLIENT] Initializing socket connection to', socketHost);
+        console.log('[CLIENT] Initializing socket connection to', socketUrl);
         console.log('[CLIENT] Current user:', currentUser, 'Room:', roomCode, 'Create:', isCreate);
 
-        const newSocket = io(socketHost, {
-            timeout: 5000,  // 5秒超时
+        const newSocket = io(socketUrl, {
+            path: '/socket.io',
+            timeout: 5000,
             reconnectionAttempts: 3
         });
         setSocket(newSocket);
@@ -153,6 +168,11 @@ export function RoomClient({ roomCode, currentUser }: RoomClientProps) {
                 }
                 return prev ? { ...prev, ...state } : state;
             });
+        });
+
+        // 语音状态更新
+        newSocket.on('voice-status-update', ({ voiceMembers: members }: { voiceMembers: VoiceMemberInfo[] }) => {
+            setVoiceMembers(members);
         });
 
         newSocket.on('system-message', (msg: string) => {
@@ -368,6 +388,20 @@ export function RoomClient({ roomCode, currentUser }: RoomClientProps) {
                                                     size="sm"
                                                     onClick={() => {
                                                         if (!isHost || !socket) return;
+
+                                                        // 乐观更新：本地立即更新状态
+                                                        setRoomState(prev => {
+                                                            if (!prev) return null;
+                                                            return {
+                                                                ...prev,
+                                                                currentEpisodeIndex: ep.index,
+                                                                currentTime: 0,
+                                                                isPlaying: true,
+                                                                lastUpdate: Date.now()
+                                                            };
+                                                        });
+
+                                                        // 广播给其他成员
                                                         socket.emit('sync-video', {
                                                             roomCode,
                                                             state: {
@@ -425,34 +459,69 @@ export function RoomClient({ roomCode, currentUser }: RoomClientProps) {
                                         {members.length}
                                     </Badge>
                                 </div>
+                                {/* 语音控制 */}
+                                <div className="mt-3">
+                                    <VoiceControls
+                                        isVoiceEnabled={voice.isVoiceEnabled}
+                                        isMicMuted={voice.isMicMuted}
+                                        onJoinVoice={voice.joinVoice}
+                                        onLeaveVoice={voice.leaveVoice}
+                                        onToggleMic={voice.toggleMic}
+                                    />
+                                </div>
                             </CardHeader>
                             <CardContent className="p-0 flex-1 overflow-y-auto max-h-[calc(100vh-300px)]">
                                 <div className="divide-y divide-border">
-                                    {members.map((member) => (
-                                        <div key={member.id} className="p-4 flex items-center gap-3 hover:bg-muted/30 transition-colors">
-                                            <div className={`w-8 h-8 flex items-center justify-center text-xs font-bold border ${roomState?.hostId === member.id ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted text-muted-foreground border-border'}`}>
-                                                {member.username.substring(0, 1).toUpperCase()}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2">
-                                                    <p className="text-sm font-medium truncate text-card-foreground">
-                                                        {member.username} {member.id === currentUser.id && '(我)'}
-                                                    </p>
-                                                    {roomState?.hostId === member.id && (
-                                                        <Badge variant="outline" className="text-[10px] px-1 h-4 border-primary/30 text-primary">HOST</Badge>
-                                                    )}
+                                    {members.map((member) => {
+                                        const voiceMember = voiceMembers.find(v => v.userId === member.id);
+                                        const isInVoice = !!voiceMember;
+                                        const isMemberMuted = voiceMember?.isMuted ?? false;
+                                        const isCurrentMember = member.id === currentUser.id;
+                                        const peerInfo = voice.peers.get(member.socketId);
+
+                                        return (
+                                            <div key={member.id} className="p-4 flex items-center gap-3 hover:bg-muted/30 transition-colors">
+                                                <div className={`w-8 h-8 flex items-center justify-center text-xs font-bold border ${roomState?.hostId === member.id ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted text-muted-foreground border-border'}`}>
+                                                    {member.username.substring(0, 1).toUpperCase()}
                                                 </div>
-                                                <div className="flex items-center gap-1.5 mt-1">
-                                                    <div className="w-1.5 h-1.5 bg-green-500 animate-pulse" />
-                                                    <p className="text-xs text-muted-foreground">Watching</p>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="text-sm font-medium truncate text-card-foreground">
+                                                            {member.username} {isCurrentMember && '(我)'}
+                                                        </p>
+                                                        {roomState?.hostId === member.id && (
+                                                            <Badge variant="outline" className="text-[10px] px-1 h-4 border-primary/30 text-primary">HOST</Badge>
+                                                        )}
+                                                        {/* 语音状态指示 */}
+                                                        <VoiceMemberIndicator isInVoice={isInVoice} isMuted={isMemberMuted} />
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 mt-1">
+                                                        <div className="w-1.5 h-1.5 bg-green-500 animate-pulse" />
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {isInVoice ? '语音中' : 'Watching'}
+                                                        </p>
+                                                    </div>
                                                 </div>
+                                                {/* 其他成员的音量控制 */}
+                                                {isInVoice && !isCurrentMember && voice.isVoiceEnabled && (
+                                                    <MemberVolumeControl
+                                                        socketId={member.socketId}
+                                                        username={member.username}
+                                                        isMuted={peerInfo?.isMuted ?? false}
+                                                        volume={peerInfo?.volume ?? 1}
+                                                        onMuteUser={voice.muteUser}
+                                                        onSetVolume={voice.setUserVolume}
+                                                    />
+                                                )}
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </CardContent>
                             <div className="p-3 border-t border-border bg-muted/30 text-center">
-                                <p className="text-[10px] text-muted-foreground font-mono">SYNC STATUS: STABLE</p>
+                                <p className="text-[10px] text-muted-foreground font-mono">
+                                    {voice.isVoiceEnabled ? `语音已连接 · ${voiceMembers.length} 人` : 'SYNC STATUS: STABLE'}
+                                </p>
                             </div>
                         </Card>
                     </div>
