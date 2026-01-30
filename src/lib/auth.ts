@@ -36,9 +36,11 @@ export async function createSession(userId: number, username: string) {
         .sign(SECRET_KEY);
 
     const cookieStore = await cookies();
+    // 注意：secure: true 只能在 HTTPS 下使用
+    // 如果用 IP 地址直接访问（HTTP），需要设置 secure: false，否则 cookie 不会被保存
     cookieStore.set(COOKIE_NAME, token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: false, // 如果部署了 HTTPS 可以改回 process.env.NODE_ENV === 'production'
         sameSite: 'lax',
         expires: expiresAt,
         path: '/',
