@@ -82,10 +82,13 @@ export function RoomClient({ roomCode, currentUser }: RoomClientProps) {
 
     // 初始化 Socket
     useEffect(() => {
-        console.log('[CLIENT] Initializing socket connection to http://localhost:3001');
+        // 从环境变量获取 socket 服务地址
+        const socketHost = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
+
+        console.log('[CLIENT] Initializing socket connection to', socketHost);
         console.log('[CLIENT] Current user:', currentUser, 'Room:', roomCode, 'Create:', isCreate);
 
-        const newSocket = io('http://localhost:3001', {
+        const newSocket = io(socketHost, {
             timeout: 5000,  // 5秒超时
             reconnectionAttempts: 3
         });
