@@ -27,16 +27,6 @@ async function isAuthenticated(request: NextRequest): Promise<boolean> {
 export default async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    // Skip static files (PWA related)
-    if (
-        pathname === '/manifest.json' ||
-        pathname === '/sw.js' ||
-        pathname === '/favicon.ico' ||
-        pathname.startsWith('/icons/')
-    ) {
-        return NextResponse.next();
-    }
-
     // Skip API routes
     if (pathname.startsWith('/api')) {
         return NextResponse.next();
