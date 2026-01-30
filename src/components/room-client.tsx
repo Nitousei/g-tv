@@ -12,7 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Users, Play, LogOut, Film } from 'lucide-react';
 import { toast } from 'sonner';
-import Player from 'xgplayer';
+import DPlayer from 'dplayer';
 
 interface User {
     id: number;
@@ -45,8 +45,8 @@ export function RoomClient({ roomCode, currentUser }: RoomClientProps) {
     const [members, setMembers] = useState<User[]>([]);
     const [roomState, setRoomState] = useState<RoomState | null>(null);
     const [followHost, setFollowHost] = useState(true);
-    const [player, setPlayer] = useState<Player | null>(null);
-    const playerRef = useRef<Player | null>(null);
+    const [player, setPlayer] = useState<DPlayer | null>(null);
+    const playerRef = useRef<DPlayer | null>(null);
     const router = useRouter();
     const searchParams = useSearchParams();
     const lastSyncTime = useRef(0);
@@ -138,8 +138,8 @@ export function RoomClient({ roomCode, currentUser }: RoomClientProps) {
                 newSocket.emit('respond-sync', {
                     requesterId,
                     state: {
-                        currentTime: playerRef.current.currentTime,
-                        isPlaying: !playerRef.current.paused,
+                        currentTime: playerRef.current.video.currentTime,
+                        isPlaying: !playerRef.current.video.paused,
                         currentVideo: roomState?.currentVideo // Ensure video is sent
                     }
                 });
@@ -173,14 +173,14 @@ export function RoomClient({ roomCode, currentUser }: RoomClientProps) {
         const targetTime = currentTime;
 
         // 状态同步
-        if (Math.abs(player.currentTime - targetTime) > 2) {
+        if (Math.abs(player.video.currentTime - targetTime) > 2) {
             console.log('Sync seeking to', targetTime);
             player.seek(targetTime);
         }
 
-        if (isPlaying && player.paused) {
+        if (isPlaying && player.video.paused) {
             player.play();
-        } else if (!isPlaying && !player.paused) {
+        } else if (!isPlaying && !player.video.paused) {
             player.pause();
         }
     }, [roomState, player, isHost, followHost]);
@@ -189,14 +189,16 @@ export function RoomClient({ roomCode, currentUser }: RoomClientProps) {
     useEffect(() => {
         if (!player || !socket || !isHost) return;
 
+        const video = player.video;
+
         const handleUpdate = () => {
             const now = Date.now();
             if (now - lastSyncTime.current > 1000) {
                 socket.emit('sync-video', {
                     roomCode,
                     state: {
-                        currentTime: player.currentTime,
-                        isPlaying: !player.paused
+                        currentTime: video.currentTime,
+                        isPlaying: !video.paused
                     }
                 });
                 lastSyncTime.current = now;
@@ -207,22 +209,22 @@ export function RoomClient({ roomCode, currentUser }: RoomClientProps) {
             socket.emit('sync-video', {
                 roomCode,
                 state: {
-                    currentTime: player.currentTime,
-                    isPlaying: !player.paused
+                    currentTime: video.currentTime,
+                    isPlaying: !video.paused
                 }
             });
         };
 
-        player.on('timeupdate', handleUpdate);
-        player.on('play', handleStateChange);
-        player.on('pause', handleStateChange);
-        player.on('seeking', handleStateChange);
+        video.addEventListener('timeupdate', handleUpdate);
+        video.addEventListener('play', handleStateChange);
+        video.addEventListener('pause', handleStateChange);
+        video.addEventListener('seeking', handleStateChange);
 
         return () => {
-            player.off('timeupdate', handleUpdate);
-            player.off('play', handleStateChange);
-            player.off('pause', handleStateChange);
-            player.off('seeking', handleStateChange);
+            video.removeEventListener('timeupdate', handleUpdate);
+            video.removeEventListener('play', handleStateChange);
+            video.removeEventListener('pause', handleStateChange);
+            video.removeEventListener('seeking', handleStateChange);
         };
     }, [player, socket, isHost, roomCode]);
 
