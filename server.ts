@@ -143,9 +143,79 @@ app.prepare().then(() => {
             await handleLeave(roomCode, userId, socket, io);
         });
 
-        // Disconnect
+        // Disconnect - 清理所有房间中该 socket 对应的成员
         socket.on('disconnect', async () => {
             console.log('Client disconnected:', socket.id);
+
+            // 获取该 socket 加入的所有房间
+            const rooms = Array.from(socket.rooms).filter(room => room !== socket.id);
+
+            for (const roomCode of rooms) {
+                try {
+                    // 从 Redis 获取该房间的成员
+                    const membersJson = await redis.lrange(getKey.members(roomCode), 0, -1);
+                    let members: User[] = membersJson.map(m => JSON.parse(m));
+
+                    // 查找通过 socketId 断开连接的成员
+                    const disconnectedMember = members.find(m => m.socketId === socket.id);
+
+                    if (disconnectedMember) {
+                        console.log(`[DISCONNECT] Removing member ${disconnectedMember.username} from room ${roomCode}`);
+
+                        // 从成员列表中移除
+                        members = members.filter(m => m.socketId !== socket.id);
+
+                        // 更新 Redis
+                        await redis.del(getKey.members(roomCode));
+                        if (members.length > 0) {
+                            const pipeline = redis.pipeline();
+                            members.forEach(m => pipeline.rpush(getKey.members(roomCode), JSON.stringify(m)));
+                            await pipeline.exec();
+                        }
+
+                        // 如果房间没人了，删除房间
+                        if (members.length === 0) {
+                            await redis.del(getKey.room(roomCode));
+                            console.log(`[DISCONNECT] Room ${roomCode} is empty, deleted`);
+                        } else {
+                            // 检查是否是房主离开
+                            const roomStateJson = await redis.get(getKey.room(roomCode));
+                            if (roomStateJson) {
+                                let roomState = JSON.parse(roomStateJson);
+                                if (roomState.hostId === disconnectedMember.id) {
+                                    roomState.hostId = members[0].id;
+                                    await redis.set(getKey.room(roomCode), JSON.stringify(roomState));
+                                    io.to(roomCode).emit('system-message', `房主已离开，${members[0].username} 成为新房主`);
+                                }
+
+                                // 通知其他成员更新成员列表
+                                io.to(roomCode).emit('room-update', {
+                                    members: members,
+                                    hostId: roomState.hostId,
+                                    roomState: roomState
+                                });
+                            }
+                        }
+
+                        // 清理语音房间状态
+                        const voiceRoom = voiceRooms.get(roomCode);
+                        if (voiceRoom) {
+                            voiceRoom.delete(socket.id);
+                            // 广播语音状态更新
+                            io.to(roomCode).emit('voice-status-update', {
+                                voiceMembers: Array.from(voiceRoom.entries()).map(([sid, data]) => ({
+                                    socketId: sid,
+                                    userId: data.user.id,
+                                    username: data.user.username,
+                                    isMuted: data.isMuted,
+                                })),
+                            });
+                        }
+                    }
+                } catch (error) {
+                    console.error(`[DISCONNECT] Error processing room ${roomCode}:`, error);
+                }
+            }
         });
 
         // Sync video (from host)

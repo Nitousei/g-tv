@@ -125,7 +125,7 @@ export function VideoSelector({ onSelect, trigger }: VideoSelectorProps) {
                 </div>
 
                 <div className="flex-1 overflow-y-auto min-h-[300px] mt-4 pr-2">
-                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                         {results.map(vod => (
                             <Card
                                 key={vod.vod_id}
@@ -141,7 +141,7 @@ export function VideoSelector({ onSelect, trigger }: VideoSelectorProps) {
                                         />
                                     ) : (
                                         <div className="absolute inset-0 flex items-center justify-center bg-muted">
-                                            <Film className="h-8 w-8 text-muted-foreground/30" />
+                                            <Film className="h-12 w-12 text-muted-foreground/30" />
                                         </div>
                                     )}
                                     {/* Remarks Badge */}
@@ -151,8 +151,8 @@ export function VideoSelector({ onSelect, trigger }: VideoSelectorProps) {
                                         </div>
                                     )}
                                 </div>
-                                <CardContent className="p-2">
-                                    <h4 className="font-bold truncate text-xs text-card-foreground group-hover:text-primary transition-colors mb-0.5" title={vod.vod_name}>
+                                <CardContent className="p-3">
+                                    <h4 className="font-bold truncate text-sm text-card-foreground group-hover:text-primary transition-colors mb-1" title={vod.vod_name}>
                                         {vod.vod_name}
                                     </h4>
                                     <div className="flex items-center gap-1.5 opacity-80">

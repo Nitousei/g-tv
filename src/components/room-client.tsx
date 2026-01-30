@@ -12,7 +12,6 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Users, Play, LogOut, Film } from 'lucide-react';
 import { toast } from 'sonner';
-import DPlayer from 'dplayer';
 import { useVoiceChat } from '@/hooks/useVoiceChat';
 import { VoiceControls, VoiceMemberIndicator, MemberVolumeControl } from '@/components/voice-controls';
 
@@ -54,8 +53,8 @@ export function RoomClient({ roomCode, currentUser }: RoomClientProps) {
     const [members, setMembers] = useState<User[]>([]);
     const [roomState, setRoomState] = useState<RoomState | null>(null);
     const [followHost, setFollowHost] = useState(true);
-    const [player, setPlayer] = useState<DPlayer | null>(null);
-    const playerRef = useRef<DPlayer | null>(null);
+    const [player, setPlayer] = useState<any>(null);
+    const playerRef = useRef<any>(null);
     const [voiceMembers, setVoiceMembers] = useState<VoiceMemberInfo[]>([]);
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -473,9 +472,11 @@ export function RoomClient({ roomCode, currentUser }: RoomClientProps) {
                             <CardContent className="p-0 flex-1 overflow-y-auto max-h-[calc(100vh-300px)]">
                                 <div className="divide-y divide-border">
                                     {members.map((member) => {
-                                        const voiceMember = voiceMembers.find(v => v.userId === member.id);
-                                        const isInVoice = !!voiceMember;
-                                        const isMemberMuted = voiceMember?.isMuted ?? false;
+                                        // 从 voice hook 获取语音成员信息
+                                        const voiceMemberFromHook = Array.from(voice.voiceMembers.values()).find(v => v.id === member.id);
+                                        const voiceMemberFromState = voiceMembers.find(v => v.userId === member.id);
+                                        const isInVoice = !!voiceMemberFromHook || !!voiceMemberFromState;
+                                        const isMemberMuted = voiceMemberFromHook?.isMuted ?? voiceMemberFromState?.isMuted ?? false;
                                         const isCurrentMember = member.id === currentUser.id;
                                         const peerInfo = voice.peers.get(member.socketId);
 
