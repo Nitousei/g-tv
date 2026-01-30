@@ -27,6 +27,16 @@ async function isAuthenticated(request: NextRequest): Promise<boolean> {
 export default async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
+    // Skip static files (PWA related)
+    if (
+        pathname === '/manifest.json' ||
+        pathname === '/sw.js' ||
+        pathname === '/favicon.ico' ||
+        pathname.startsWith('/icons/')
+    ) {
+        return NextResponse.next();
+    }
+
     // Skip API routes
     if (pathname.startsWith('/api')) {
         return NextResponse.next();
@@ -50,16 +60,5 @@ export default async function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: [
-        /*
-         * Match all request paths except for:
-         * - api (API routes)
-         * - _next/static (static files)
-         * - _next/image (image optimization files)
-         * - favicon.ico, manifest.json, sw.js
-         * - icons folder
-         * - any files with extensions (.png, .jpg, .svg, etc.)
-         */
-        '/((?!api|_next/static|_next/image|favicon\\.ico|manifest\\.json|sw\\.js|icons|.*\\..*).*)',
-    ]
+    matcher: ['/', '/(zh|en)/:path*']
 };
