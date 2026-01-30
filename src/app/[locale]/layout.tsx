@@ -7,10 +7,32 @@ import { QueryProvider } from '@/providers/query-provider';
 import { Toaster } from "@/components/ui/sonner"
 import "../globals.css";
 import { SessionChecker } from '@/components/session-checker';
+import { ServiceWorkerRegistration } from '@/components/service-worker-registration';
 
 export const metadata = {
-    title: 'Gtv',
-    description: 'Gtv Application',
+    title: '老乡TV',
+    description: '和好友一起看电影',
+    manifest: '/manifest.json',
+    appleWebApp: {
+        capable: true,
+        statusBarStyle: 'black-translucent',
+        title: '老乡TV',
+    },
+    formatDetection: {
+        telephone: false,
+    },
+    themeColor: '#000000',
+    viewport: {
+        width: 'device-width',
+        initialScale: 1,
+        maximumScale: 1,
+        userScalable: false,
+        viewportFit: 'cover',
+    },
+    icons: {
+        icon: '/icons/icon-192x192.png',
+        apple: '/icons/apple-touch-icon.png',
+    },
 };
 
 export default async function LocaleLayout({
@@ -44,6 +66,7 @@ export default async function LocaleLayout({
                         >
                             {children}
                             <SessionChecker />
+                            <ServiceWorkerRegistration />
                             <Toaster />
                         </ThemeProvider>
                     </QueryProvider>
