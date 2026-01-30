@@ -50,5 +50,16 @@ export default async function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/', '/(zh|en)/:path*']
+    matcher: [
+        /*
+         * Match all request paths except for:
+         * - api (API routes)
+         * - _next/static (static files)
+         * - _next/image (image optimization files)
+         * - favicon.ico, manifest.json, sw.js
+         * - icons folder
+         * - any files with extensions (.png, .jpg, .svg, etc.)
+         */
+        '/((?!api|_next/static|_next/image|favicon\\.ico|manifest\\.json|sw\\.js|icons|.*\\..*).*)',
+    ]
 };
