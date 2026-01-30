@@ -125,3 +125,20 @@
     font-family: "Microsoft YaHei", "Heiti SC", sans-serif;
   }
 }
+
+/* PWA safe area support for fullscreen mode */
+@supports (padding: env(safe-area-inset-top)) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Ensure html and body take full height */
+html,
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+}

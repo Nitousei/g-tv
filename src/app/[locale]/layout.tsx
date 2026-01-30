@@ -58,10 +58,14 @@ export default async function LocaleLayout({
             <head>
                 <link rel="manifest" href="/manifest.json" />
                 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+                <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png" />
+                <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512x512.png" />
                 <meta name="apple-mobile-web-app-capable" content="yes" />
-                <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+                <meta name="apple-mobile-web-app-status-bar-style" content="black" />
                 <meta name="apple-mobile-web-app-title" content="老乡TV" />
-                <meta name="theme-color" content="#000000" />
+                <meta name="theme-color" content="#09090b" media="(prefers-color-scheme: dark)" />
+                <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+                <meta name="mobile-web-app-capable" content="yes" />
             </head>
             <body className="font-sans antialiased">
                 <NextIntlClientProvider messages={messages}>
