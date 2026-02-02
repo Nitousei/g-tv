@@ -19,6 +19,8 @@ const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 interface User {
     id: number;
     username: string;
+    nickname?: string;
+    avatar?: string;
     socketId: string;
 }
 
@@ -109,7 +111,7 @@ app.prepare().then(() => {
         });
 
         // Join room
-        socket.on('join-room', async ({ roomCode, user, create }: { roomCode: string, user: { id: number, name: string }, create?: boolean }) => {
+        socket.on('join-room', async ({ roomCode, user, create }: { roomCode: string, user: { id: number, name: string, nickname?: string, avatar?: string }, create?: boolean }) => {
             console.log(`[JOIN] Room: ${roomCode}, User: ${user.id} (${user.name}), Create: ${create}, Socket: ${socket.id}`);
 
             const roomExists = await redis.exists(getKey.room(roomCode));
@@ -137,7 +139,13 @@ app.prepare().then(() => {
             const existingMemberIndex = members.findIndex(m => Number(m.id) === Number(user.id));
 
             if (existingMemberIndex === -1) {
-                const newUser = { id: user.id, username: user.name, socketId: socket.id };
+                const newUser = {
+                    id: user.id,
+                    username: user.name,
+                    nickname: user.nickname,
+                    avatar: user.avatar,
+                    socketId: socket.id
+                };
                 members.push(newUser);
                 await redis.rpush(getKey.members(roomCode), JSON.stringify(newUser));
                 console.log(`[JOIN] Added new user ${user.id}`);

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { useRouter } from "next/navigation"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { request } from "@/lib/http"
@@ -257,6 +257,7 @@ function ProfileSettings({ user, isLoading, onUpdate }: { user?: UserProfile, is
 
 function HistoryList({ list, isLoading }: { list?: HistoryItem[], isLoading: boolean }) {
     const router = useRouter()
+    const locale = useLocale()
 
     if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>
 
@@ -265,7 +266,7 @@ function HistoryList({ list, isLoading }: { list?: HistoryItem[], isLoading: boo
             <div className="flex flex-col items-center justify-center p-20 text-muted-foreground border border-dashed rounded-lg">
                 <HistoryIcon className="h-10 w-10 mb-2 opacity-20" />
                 <p>暂无观看记录</p>
-                <Button variant="link" onClick={() => router.push('/zh/search')}>去看看有什么好片</Button>
+                <Button variant="link" onClick={() => router.push(`/${locale}/search`)}>去看看有什么好片</Button>
             </div>
         )
     }
@@ -283,7 +284,7 @@ function HistoryList({ list, isLoading }: { list?: HistoryItem[], isLoading: boo
                 const percent = item.duration > 0 ? Math.min(100, Math.round((item.progress / item.duration) * 100)) : 0
                 return (
                     <Card key={item.id} className="overflow-hidden group cursor-pointer hover:ring-2 hover:ring-primary transition-all"
-                        onClick={() => router.push(`/zh/watch/${item.videoId}?t=${item.progress}`)}> {/* Assuming zh locale for now or handling redirects */}
+                        onClick={() => router.push(`/${locale}/watch/${item.videoId}?t=${item.progress}`)}> {/* Assuming zh locale for now or handling redirects */}
                         <div className="aspect-[2/3] relative bg-black/20">
                             {item.cover ? (
                                 <img src={item.cover} alt={item.videoName} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" />

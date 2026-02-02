@@ -18,6 +18,8 @@ import { VoiceControls, VoiceMemberIndicator, MemberVolumeControl } from '@/comp
 interface User {
     id: number;
     username: string;
+    nickname?: string;
+    avatar?: string;
     socketId: string;
 }
 
@@ -45,7 +47,12 @@ interface Episode {
 
 interface RoomClientProps {
     roomCode: string;
-    currentUser: { id: number; username: string };
+    currentUser: {
+        id: number;
+        username: string;
+        nickname: string | null;
+        avatar: string | null;
+    };
 }
 
 export function RoomClient({ roomCode, currentUser }: RoomClientProps) {
@@ -113,7 +120,12 @@ export function RoomClient({ roomCode, currentUser }: RoomClientProps) {
             console.log('[CLIENT] Emitting join-room event...');
             newSocket.emit('join-room', {
                 roomCode,
-                user: { id: currentUser.id, name: currentUser.username },
+                user: {
+                    id: currentUser.id,
+                    name: currentUser.username,
+                    nickname: currentUser.nickname || undefined,
+                    avatar: currentUser.avatar || undefined
+                },
                 create: isCreate
             });
         });
@@ -482,13 +494,17 @@ export function RoomClient({ roomCode, currentUser }: RoomClientProps) {
 
                                         return (
                                             <div key={member.id} className="p-4 flex items-center gap-3 hover:bg-muted/30 transition-colors">
-                                                <div className={`w-8 h-8 flex items-center justify-center text-xs font-bold border ${roomState?.hostId === member.id ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted text-muted-foreground border-border'}`}>
-                                                    {member.username.substring(0, 1).toUpperCase()}
+                                                <div className={`w-8 h-8 flex items-center justify-center text-xs font-bold border rounded-full overflow-hidden ${roomState?.hostId === member.id ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted text-muted-foreground border-border'}`}>
+                                                    {member.avatar ? (
+                                                        <img src={member.avatar} alt={member.username} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        (member.nickname || member.username).substring(0, 1).toUpperCase()
+                                                    )}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2">
                                                         <p className="text-sm font-medium truncate text-card-foreground">
-                                                            {member.username} {isCurrentMember && '(我)'}
+                                                            {member.nickname || member.username} {isCurrentMember && '(我)'}
                                                         </p>
                                                         {roomState?.hostId === member.id && (
                                                             <Badge variant="outline" className="text-[10px] px-1 h-4 border-primary/30 text-primary">HOST</Badge>

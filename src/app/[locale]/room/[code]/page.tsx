@@ -2,6 +2,7 @@ import { getSession } from '@/lib/auth';
 import { RoomClient } from '@/components/room-client';
 import { redirect } from 'next/navigation';
 import Header from '@/components/header';
+import prisma from '@/lib/db';
 
 export default async function RoomPage({
     params
@@ -15,11 +16,20 @@ export default async function RoomPage({
         redirect(`/${locale}?login=true`);
     }
 
+    const user = await prisma.user.findUnique({
+        where: { id: session.userId },
+        select: { id: true, username: true, nickname: true, avatar: true }
+    });
+
+    if (!user) {
+        redirect(`/${locale}?login=true`);
+    }
+
     return (
         <div className="min-h-screen bg-background">
             <RoomClient
                 roomCode={code}
-                currentUser={{ id: session.userId, username: session.username }}
+                currentUser={user}
             />
         </div>
     )

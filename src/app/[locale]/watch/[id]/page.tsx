@@ -84,11 +84,28 @@ export default function WatchPage({
     // 获取影片详情
     useEffect(() => {
         async function fetchDetail() {
-            if (!siteUrl || !id) return
+            if (!id) return
 
             setIsLoading(true)
             try {
-                const apiUrl = `${siteUrl}?ac=detail&ids=${id}`
+                let targetSiteUrl = siteUrl
+
+                // If no site url (e.g. from history), fetch default site
+                if (!targetSiteUrl) {
+                    const siteRes = await fetch('/api/sites')
+                    if (siteRes.ok) {
+                        const siteData = await siteRes.json()
+                        if (siteData.sites && siteData.sites.length > 0) {
+                            targetSiteUrl = siteData.sites[0].apiUrl
+                        }
+                    }
+                }
+
+                if (!targetSiteUrl) {
+                    throw new Error('No site configured')
+                }
+
+                const apiUrl = `${targetSiteUrl}?ac=detail&ids=${id}`
                 const res = await fetch(`/api/proxy?url=${encodeURIComponent(apiUrl)}`)
 
                 if (!res.ok) throw new Error('Failed to fetch')
