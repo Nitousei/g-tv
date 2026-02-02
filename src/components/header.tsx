@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { LogOut, Menu, X, User as UserIcon, History, Settings } from 'lucide-react';
 
-export default function Header({ user: initialUser }: { user?: { username: string; nickname?: string; avatar?: string } | null }) {
+export default function Header({ user: initialUser }: { user?: { username: string; nickname?: string | null; avatar?: string | null } | null }) {
     const t = useTranslations('HomePage');
     const locale = useLocale();
     const router = useRouter();
