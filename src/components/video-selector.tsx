@@ -59,7 +59,29 @@ export function VideoSelector({ onSelect, trigger }: VideoSelectorProps) {
             const apiUrl = `${activeSite.apiUrl}?ac=list&wd=${encodeURIComponent(query)}`;
             const res = await fetch(`/api/proxy?url=${encodeURIComponent(apiUrl)}`);
             const data = await res.json();
-            setResults(data.list || []);
+            const items = data.list || [];
+            setResults(items);
+
+            // Fetch TMDB images for items without covers or with broken covers
+            // We can try to fetch for all to get better quality, but let's stick to missing ones first to save API calls
+            // Or if the user implies covers are missing, maybe the CMS doesn't provide them.
+            items.forEach(async (item: VodItem) => {
+                try {
+                    if (!item.vod_pic || item.vod_pic.includes('mac') || item.vod_pic.includes('maccms')) {
+                        const tmdbRes = await fetch(`/api/tmdb/search?query=${encodeURIComponent(item.vod_name)}`);
+                        if (tmdbRes.ok) {
+                            const tmdbData = await tmdbRes.json();
+                            if (tmdbData.found && tmdbData.poster) {
+                                setResults(prev => prev.map(v =>
+                                    v.vod_id === item.vod_id ? { ...v, vod_pic: tmdbData.poster } : v
+                                ));
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error("TMDB fetch error", e);
+                }
+            });
         } catch (e) {
             console.error(e);
         } finally {

@@ -6,10 +6,12 @@ interface VideoPlayerProps {
     url: string
     poster?: string
     title?: string
+    startTime?: number
     onInit?: (player: any) => void
+    onProgress?: (state: { playedSeconds: number, loadedSeconds: number, totalSeconds: number }) => void
 }
 
-export function VideoPlayer({ url, poster, title, onInit }: VideoPlayerProps) {
+export function VideoPlayer({ url, poster, title, startTime, onInit, onProgress }: VideoPlayerProps) {
     const containerRef = useRef<HTMLDivElement>(null)
     const playerRef = useRef<any>(null)
     const [isClient, setIsClient] = useState(false)
@@ -66,6 +68,33 @@ export function VideoPlayer({ url, poster, title, onInit }: VideoPlayerProps) {
 
             playerRef.current = new DPlayer(options)
 
+            // Seek to start time if provided
+            if (startTime && startTime > 0) {
+                playerRef.current.seek(startTime)
+            }
+
+            // Bind progress event
+            if (onProgress) {
+                playerRef.current.on('timeupdate', () => {
+                    if (playerRef.current && playerRef.current.video) {
+                        const playedSeconds = playerRef.current.video.currentTime;
+                        const totalSeconds = playerRef.current.video.duration || 0;
+                        // For buffer, DPlayer doesn't expose it directly in event, but HTMLVideoElement does
+                        const buffered = playerRef.current.video.buffered;
+                        let loadedSeconds = 0;
+                        if (buffered.length > 0) {
+                            loadedSeconds = buffered.end(buffered.length - 1);
+                        }
+
+                        onProgress({
+                            playedSeconds,
+                            loadedSeconds,
+                            totalSeconds
+                        });
+                    }
+                });
+            }
+
             // 尝试带声音自动播放，如果被阻止则静音后重试
             const tryAutoplay = async () => {
                 if (!playerRef.current) return
@@ -100,7 +129,7 @@ export function VideoPlayer({ url, poster, title, onInit }: VideoPlayerProps) {
                 playerRef.current = null
             }
         }
-    }, [isClient, url, poster])
+    }, [isClient, url, poster]) // Re-init if these change. startTime is initial only, so not a dep.
 
     return (
         <div className="w-full aspect-video bg-black rounded-lg overflow-hidden relative">

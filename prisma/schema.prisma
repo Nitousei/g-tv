@@ -14,9 +14,27 @@ datasource db {
 }
 
 model User {
-  id       Int    @id @default(autoincrement())
-  username String @unique
-  password String
+  id        Int       @id @default(autoincrement())
+  username  String    @unique
+  password  String
+  nickname  String?
+  avatar    String?
+  createdAt DateTime  @default(now())
+  history   History[]
+}
+
+model History {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  videoId   String
+  videoName String
+  cover     String?
+  progress  Int      // seconds
+  duration  Int      // total seconds
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, videoId])
 }
 
 model CollectionSite {

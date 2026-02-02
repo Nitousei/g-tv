@@ -11,5 +11,11 @@ export const authService = {
             method: 'POST',
             data
         });
+    },
+    register: (data: any) => {
+        return request<any>('/api/auth/register', {
+            method: 'POST',
+            data
+        });
     }
 }

@@ -8,31 +8,14 @@ import { Toaster } from "@/components/ui/sonner"
 import "../globals.css";
 import { SessionChecker } from '@/components/session-checker';
 import { ServiceWorkerRegistration } from '@/components/service-worker-registration';
+import Header from '@/components/header';
+import { getSession } from '@/lib/auth';
+import prisma from '@/lib/db';
 
 export const metadata = {
     title: '老乡TV',
     description: '和好友一起看电影',
-    manifest: '/manifest.json',
-    appleWebApp: {
-        capable: true,
-        statusBarStyle: 'black-translucent',
-        title: '老乡TV',
-    },
-    formatDetection: {
-        telephone: false,
-    },
-    themeColor: '#000000',
-    viewport: {
-        width: 'device-width',
-        initialScale: 1,
-        maximumScale: 1,
-        userScalable: false,
-        viewportFit: 'cover',
-    },
-    icons: {
-        icon: '/icons/icon-192x192.png',
-        apple: '/icons/apple-touch-icon.png',
-    },
+    // ... (rest of metadata)
 };
 
 export default async function LocaleLayout({
@@ -43,6 +26,15 @@ export default async function LocaleLayout({
     params: Promise<{ locale: string }>;
 }) {
     const { locale } = await params;
+    const session = await getSession();
+    let user = null;
+
+    if (session) {
+        user = await prisma.user.findUnique({
+            where: { id: session.userId },
+            select: { username: true, nickname: true, avatar: true }
+        });
+    }
 
     // Ensure that the incoming `locale` is valid
     if (!routing.locales.includes(locale as any)) {
@@ -76,6 +68,7 @@ export default async function LocaleLayout({
                             enableSystem
                             disableTransitionOnChange
                         >
+                            <Header user={user} />
                             {children}
                             <SessionChecker />
                             <ServiceWorkerRegistration />

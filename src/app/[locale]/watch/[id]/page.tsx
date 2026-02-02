@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect, use, useRef, useCallback } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { VideoPlayer } from '@/components/video-player'
 import { Loader2, ArrowLeft, Play, Square } from 'lucide-react'
 import Link from 'next/link'
+import { request } from '@/lib/http'
 
 interface VodDetail {
     vod_id: number
@@ -42,6 +43,7 @@ export default function WatchPage({
     const { locale, id } = use(params)
     const searchParams = useSearchParams()
     const siteUrl = searchParams.get('site') || ''
+    const tParam = searchParams.get('t') // Start time param
     const t = useTranslations('Watch')
 
     const [detail, setDetail] = useState<VodDetail | null>(null)
@@ -50,6 +52,16 @@ export default function WatchPage({
     const [activeEpisode, setActiveEpisode] = useState(0)
     const [currentPlayUrl, setCurrentPlayUrl] = useState('')
     const [isLoading, setIsLoading] = useState(true)
+    const [startTime, setStartTime] = useState(0)
+
+    // History tracking
+    const lastReportTime = useRef(0)
+
+    useEffect(() => {
+        if (tParam) {
+            setStartTime(parseInt(tParam, 10))
+        }
+    }, [tParam])
 
     // 解析播放地址
     const parsePlayUrl = (playFrom: string, playUrl: string): PlaySource[] => {
@@ -110,6 +122,28 @@ export default function WatchPage({
         setCurrentPlayUrl(playSources[sourceIndex].episodes[episodeIndex].url)
     }
 
+    // Handle Progress Update
+    const onProgress = useCallback((state: { playedSeconds: number, loadedSeconds: number, totalSeconds: number }) => {
+        // Report every 10 seconds or if meaningful progress
+        const now = Date.now();
+        if (now - lastReportTime.current > 10000 && detail) {
+            lastReportTime.current = now;
+            request('/api/user/history', {
+                method: 'POST',
+                data: {
+                    videoId: id,
+                    videoName: detail.vod_name,
+                    cover: detail.vod_pic,
+                    progress: Math.floor(state.playedSeconds),
+                    duration: Math.floor(state.totalSeconds)
+                }
+            }).catch(e => {
+                // Silent fail for guest users or network errors, don't interrupt playback
+                // console.log("Failed to report history", e);
+            });
+        }
+    }, [detail, id]);
+
     if (isLoading) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
@@ -156,6 +190,8 @@ export default function WatchPage({
                                 url={currentPlayUrl}
                                 poster={detail.vod_pic}
                                 title={detail.vod_name}
+                                startTime={startTime}
+                                onProgress={onProgress} // Pass progress handler
                             />
                         ) : (
                             <div className="aspect-video bg-black rounded-lg overflow-hidden flex items-center justify-center text-white/50">

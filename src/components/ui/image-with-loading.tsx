@@ -40,6 +40,7 @@ export function ImageWithLoading({
                         setError(true)
                     }}
                     loading="lazy"
+                    referrerPolicy="no-referrer"
                     {...props}
                 />
             ) : (

@@ -221,9 +221,6 @@ export default function SearchPage() {
 
     return (
         <div className="min-h-screen bg-background bg-grid flex flex-col font-sans text-foreground">
-            {/* Header */}
-            <Header />
-
             {/* Content */}
             <div className="flex-1 container mx-auto px-4 py-8 space-y-8">
                 {/* 搜索框 + 资源站选择 */}

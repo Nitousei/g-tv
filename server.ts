@@ -35,7 +35,10 @@ interface RoomState {
 const getKey = {
     room: (code: string) => `room:${code}`,
     members: (code: string) => `room:${code}:members`,
+    activeRooms: 'active_rooms'
 };
+
+
 
 app.prepare().then(() => {
     const httpServer = createServer((req, res) => {
@@ -55,9 +58,55 @@ app.prepare().then(() => {
     // 用于存储语音成员状态的内存 Map
     const voiceRooms = new Map<string, Map<string, { user: { id: number; username: string }; isMuted: boolean }>>();
 
+    // Helper: Broadcast lobby state
+    async function broadcastLobbyState() {
+        const roomCodes = await redis.smembers(getKey.activeRooms);
+        const roomsData = [];
+        const onlineCount = io.engine.clientsCount;
+
+        for (const code of roomCodes) {
+            const roomStateJson = await redis.get(getKey.room(code));
+            const membersLen = await redis.llen(getKey.members(code));
+
+            if (roomStateJson) {
+                const roomState = JSON.parse(roomStateJson);
+                console.log(`[LobbyBroadcast] Room ${code} Current Video:`, JSON.stringify(roomState.currentVideo));
+                // Get host name
+                const membersJson = await redis.lrange(getKey.members(code), 0, -1);
+                const members = membersJson.map(m => JSON.parse(m));
+                const host = members.find(m => m.id === roomState.hostId);
+
+                roomsData.push({
+                    roomCode: code,
+                    hostName: host?.username || 'Unknown',
+                    memberCount: membersLen,
+                    videoName: roomState.currentVideo?.vod_name || roomState.currentVideo?.name || 'Nothing playing',
+                    isPlaying: roomState.isPlaying
+                });
+            } else {
+                // Clean up stale room key
+                await redis.srem(getKey.activeRooms, code);
+            }
+        }
+
+        io.to('lobby').emit('lobby-update', {
+            rooms: roomsData,
+            onlineCount
+        });
+    }
+
     // Socket.IO event handlers
     io.on('connection', (socket) => {
         console.log('Client connected:', socket.id);
+
+        // Broadcast online count on connect
+        io.to('lobby').emit('online-count', io.engine.clientsCount);
+
+        // Join Lobby
+        socket.on('join-lobby', async () => {
+            socket.join('lobby');
+            await broadcastLobbyState();
+        });
 
         // Join room
         socket.on('join-room', async ({ roomCode, user, create }: { roomCode: string, user: { id: number, name: string }, create?: boolean }) => {
@@ -72,9 +121,11 @@ app.prepare().then(() => {
             }
 
             socket.join(roomCode);
+            // If currently in lobby, leave lobby to stop receiving full updates? 
+            // Optional, but keeping them might be useful for notifications. 
+            // For now, let's keep them in lobby or not concern ourselves too much.
 
             const membersJson = await redis.lrange(getKey.members(roomCode), 0, -1);
-            console.log(`[JOIN] Existing members count: ${membersJson.length}`);
 
             let members: User[] = [];
             try {
@@ -111,6 +162,7 @@ app.prepare().then(() => {
                     lastUpdate: Date.now()
                 };
                 await redis.set(getKey.room(roomCode), JSON.stringify(roomState), 'EX', 24 * 60 * 60);
+                await redis.sadd(getKey.activeRooms, roomCode); // Track active room
                 console.log(`[JOIN] Created new room state with host ${hostId}`);
             } else {
                 hostId = roomState.hostId;
@@ -136,6 +188,9 @@ app.prepare().then(() => {
                     io.to(hostMember.socketId).emit('request-sync', { requesterId: socket.id });
                 }
             }
+
+            // Broadcast update to lobby
+            broadcastLobbyState();
         });
 
         // Leave room
@@ -147,8 +202,11 @@ app.prepare().then(() => {
         socket.on('disconnect', async () => {
             console.log('Client disconnected:', socket.id);
 
+            // Broadcast online count
+            io.to('lobby').emit('online-count', io.engine.clientsCount);
+
             // 获取该 socket 加入的所有房间
-            const rooms = Array.from(socket.rooms).filter(room => room !== socket.id);
+            const rooms = Array.from(socket.rooms).filter(room => room !== socket.id && room !== 'lobby');
 
             for (const roomCode of rooms) {
                 try {
@@ -176,6 +234,7 @@ app.prepare().then(() => {
                         // 如果房间没人了，删除房间
                         if (members.length === 0) {
                             await redis.del(getKey.room(roomCode));
+                            await redis.srem(getKey.activeRooms, roomCode); // Clean up active room
                             console.log(`[DISCONNECT] Room ${roomCode} is empty, deleted`);
                         } else {
                             // 检查是否是房主离开
@@ -197,11 +256,10 @@ app.prepare().then(() => {
                             }
                         }
 
-                        // 清理语音房间状态
+                        // Update voice presence
                         const voiceRoom = voiceRooms.get(roomCode);
                         if (voiceRoom) {
                             voiceRoom.delete(socket.id);
-                            // 广播语音状态更新
                             io.to(roomCode).emit('voice-status-update', {
                                 voiceMembers: Array.from(voiceRoom.entries()).map(([sid, data]) => ({
                                     socketId: sid,
@@ -211,6 +269,8 @@ app.prepare().then(() => {
                                 })),
                             });
                         }
+
+                        broadcastLobbyState();
                     }
                 } catch (error) {
                     console.error(`[DISCONNECT] Error processing room ${roomCode}:`, error);
@@ -226,6 +286,14 @@ app.prepare().then(() => {
                 const newState = { ...current, ...state, lastUpdate: Date.now() };
                 await redis.set(getKey.room(roomCode), JSON.stringify(newState));
                 socket.to(roomCode).emit('sync-video', newState);
+
+                // If video or playing state changed, might want to update lobby
+                const oldName = current.currentVideo?.vod_name || current.currentVideo?.name;
+                const newName = state.currentVideo?.vod_name || state.currentVideo?.name;
+
+                if (oldName !== newName || current.isPlaying !== state.isPlaying) {
+                    broadcastLobbyState();
+                }
             }
         });
 
@@ -371,6 +439,8 @@ app.prepare().then(() => {
 
         if (members.length === 0) {
             await redis.del(getKey.room(roomCode));
+            await redis.srem(getKey.activeRooms, roomCode); // Clean up active room
+            console.log(`[LEAVE] Room ${roomCode} is empty, deleted`);
         } else {
             const roomStateJson = await redis.get(getKey.room(roomCode));
             if (roomStateJson) {
@@ -388,6 +458,7 @@ app.prepare().then(() => {
                 });
             }
         }
+        broadcastLobbyState();
     }
 
     httpServer.listen(port, () => {

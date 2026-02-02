@@ -33,8 +33,8 @@ import { toast } from "sonner"
 
 export function LoginDialog() {
     const [open, setOpen] = useState(false)
+    const [isRegister, setIsRegister] = useState(false)
     const t = useTranslations('Login')
-    const tHome = useTranslations('HomePage') // For the trigger button text if needed
     const router = useRouter()
     const locale = useLocale()
 
@@ -45,6 +45,15 @@ export function LoginDialog() {
         password: z.string().min(1, {
             message: t('passwordRequired'),
         }),
+        confirmPassword: z.string().optional(),
+    }).refine((data) => {
+        if (isRegister) {
+            return data.password === data.confirmPassword
+        }
+        return true
+    }, {
+        message: "两次输入的密码不一致", // TODO: i18n
+        path: ["confirmPassword"],
     })
 
     const form = useForm<z.infer<typeof formSchema>>({
@@ -52,6 +61,7 @@ export function LoginDialog() {
         defaultValues: {
             username: "",
             password: "",
+            confirmPassword: "",
         },
     })
 
@@ -60,8 +70,11 @@ export function LoginDialog() {
         onSuccess: () => {
             setOpen(false)
             toast.success(t('success'))
-            router.refresh() // 刷新服务器状态，确保 cookie 被识别
-            router.push(`/${locale}/search`)
+
+            // Clear cache and full reload as requested
+            sessionStorage.clear();
+            localStorage.clear();
+            window.location.href = `/${locale}/search`;
         },
         onError: (error: any) => {
             console.error(error)
@@ -71,8 +84,36 @@ export function LoginDialog() {
         }
     })
 
+    const registerMutation = useMutation({
+        mutationFn: (data: any) => authService.register(data),
+        onSuccess: () => {
+            setOpen(false)
+            toast.success("注册成功")
+
+            // Clear cache and full reload
+            sessionStorage.clear();
+            localStorage.clear();
+            window.location.href = `/${locale}/search`
+        },
+        onError: (error: any) => {
+            console.error(error)
+            toast.error("注册失败", {
+                description: error.message || t('error'),
+            })
+        }
+    })
+
     function onSubmit(values: z.infer<typeof formSchema>) {
-        loginMutation.mutate(values)
+        if (isRegister) {
+            registerMutation.mutate(values)
+        } else {
+            loginMutation.mutate(values)
+        }
+    }
+
+    const toggleMode = () => {
+        setIsRegister(!isRegister)
+        form.reset()
     }
 
     return (
@@ -84,9 +125,9 @@ export function LoginDialog() {
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>{t('title')}</DialogTitle>
+                    <DialogTitle>{isRegister ? "注册" : t('title')}</DialogTitle>
                     <DialogDescription>
-                        {t('desc')}
+                        {isRegister ? "创建一个新账号" : t('desc')}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -119,10 +160,30 @@ export function LoginDialog() {
                                 </FormItem>
                             )}
                         />
-                        <DialogFooter>
-                            <Button type="submit" disabled={loginMutation.isPending}>
-                                {loginMutation.isPending ? t('loggingIn') : t('title')}
-                            </Button>
+                        {isRegister && (
+                            <FormField
+                                control={form.control}
+                                name="confirmPassword"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>确认密码</FormLabel>
+                                        <FormControl>
+                                            <Input type="password" placeholder="******" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        )}
+                        <DialogFooter className="flex-col gap-2 sm:gap-0">
+                            <div className="flex w-full justify-between items-center">
+                                <Button variant="link" type="button" onClick={toggleMode} className="px-0">
+                                    {isRegister ? "已有账号？去登录" : "没有账号？去注册"}
+                                </Button>
+                                <Button type="submit" disabled={loginMutation.isPending || registerMutation.isPending}>
+                                    {loginMutation.isPending || registerMutation.isPending ? "请稍候..." : (isRegister ? "注册" : t('title'))}
+                                </Button>
+                            </div>
                         </DialogFooter>
                     </form>
                 </Form>

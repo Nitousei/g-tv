@@ -17,7 +17,6 @@ export default async function RoomPage({
 
     return (
         <div className="min-h-screen bg-background">
-            <Header />
             <RoomClient
                 roomCode={code}
                 currentUser={{ id: session.userId, username: session.username }}
